@@ -92,10 +92,46 @@ enum MessageStatus {
   failed
 }
 
-enum SubscriptionType {
-  saas_full    // E-commerce completo + CRM + Billing
-  crm_only     // Solo CRM
-  billing_only // Solo Facturación
+
+
+enum StreamingService {
+  netflix
+  disney_plus
+  hulu
+  amazon_prime
+  hbo_max
+  paramount_plus
+  apple_tv
+  peacock
+  other
+}
+
+enum ServiceStatus {
+  active
+  paused
+  expired
+}
+
+enum BillingEventType {
+  payment
+  refund
+  subscription_renewed
+  charge_failed
+  subscription_created
+  subscription_cancelled
+}
+
+enum BillingEventStatus {
+  pending
+  completed
+  failed
+}
+
+enum BillingCurrency {
+  USD
+  CRC
+  MXN
+  EUR
 }
 
 // ========================================
@@ -108,7 +144,6 @@ model Tenant {
   slug             String           @unique
   status           TenantStatus     @default(active)
   billingStatus    BillingStatus    @default(ok)
-  subscriptionType SubscriptionType @default(saas_full)
   industry         String?
   config           Json?
   createdAt        DateTime         @default(now())
@@ -128,6 +163,9 @@ model Tenant {
   conversations Conversation[]
   messages    Message[]
   leads       Lead[]
+  credentials Credential[]
+  services    Service[]
+  billingEvents BillingEvent[]
 
   @@map("tenants")
 }
@@ -471,7 +509,7 @@ model Message {
 
 model Lead {
   id                      String    @id @default(uuid())
-  tenantId                Int
+  tenantId                Int?      // Nullable: leads sin tenant (anónimos) | cuando se convierte a tenant, se asigna el tenantId
   
   // Información del negocio
   businessName            String?
@@ -499,11 +537,93 @@ model Lead {
   updatedAt               DateTime  @updatedAt
   
   // Relaciones
-  tenant                  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                  Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
   
   @@index([tenantId])
   @@index([email])
   @@index([status])
   @@index([createdAt])
   @@map("leads")
+}
+// ========================================
+// STREAMING - CREDENCIALES
+// ========================================
+
+model Credential {
+  id               String          @id @default(uuid())
+  tenantId         Int
+  serviceName      StreamingService
+  email            String
+  password         String          // Encriptada en la aplicación
+  pin              String?         // Opcional
+  maxProfiles      Int?            // Opcional
+  sharedWith       Json?           // Opcional: array de información de perfiles compartidos
+  isActive         Boolean         @default(true)
+  accessExpiresAt  DateTime?       // Opcional: fecha de expiración del acceso
+  metadata         Json?           // Extra data específica del servicio
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Relaciones
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services Service[]
+
+  @@unique([tenantId, serviceName, email])
+  @@index([tenantId])
+  @@index([serviceName])
+  @@index([isActive])
+  @@map("credentials")
+}
+
+// ========================================
+// STREAMING - SERVICIOS ACTIVOS
+// ========================================
+
+model Service {
+  id                 String        @id @default(uuid())
+  tenantId           Int
+  credentialId       String
+  serviceName        StreamingService
+  monthlySubscribers Int           @default(0)
+  profileCount       Int           @default(0)
+  status             ServiceStatus @default(active)
+  metadata           Json?         // Extra data (price, renewal date, etc)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  // Relaciones
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  credential Credential @relation(fields: [credentialId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, credentialId])
+  @@index([tenantId])
+  @@index([credentialId])
+  @@index([serviceName])
+  @@index([status])
+  @@map("services")
+}
+
+// ========================================
+// BILLING - AUDITORÍA DE TRANSACCIONES
+// ========================================
+
+model BillingEvent {
+  id          String              @id @default(uuid())
+  tenantId    Int
+  eventType   BillingEventType
+  status      BillingEventStatus  @default(pending)
+  amount      Int                 // En centavos
+  currency    BillingCurrency     @default(USD)
+  metadata    Json?               // { orderId, paymentProvider, transactionId, description, etc }
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  // Relaciones
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("billing_events")
 }

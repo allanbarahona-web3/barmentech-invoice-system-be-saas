@@ -4,12 +4,20 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { RegisterMayoristaDto } from './dto/register-mayorista.dto';
 import { CrmSignupDto } from './dto/crm-signup.dto';
+import { RegisterLeadDto } from './dto/register-lead.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('register-mayorista')
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })  // 5 registros por hora
+  registerMayorista(@Body() registerMayoristaDto: RegisterMayoristaDto) {
+    return this.authService.registerMayorista(registerMayoristaDto);
+  }
 
   @Post('register')
   @Throttle({ default: { limit: 3, ttl: 3600000 } })  // 3 requests per hour
@@ -58,5 +66,14 @@ export class AuthController {
     const ipAddress = req.ip || req.connection?.remoteAddress;
     const userAgent = req.headers['user-agent'];
     return this.authService.crmSignup(crmSignupDto, ipAddress, userAgent);
+  }
+
+  @Post('register-lead')
+  @Throttle({ default: { limit: 5, ttl: 3600000 } })  // 5 requests per hour
+  registerLead(@Body() registerLeadDto: RegisterLeadDto, @Request() req) {
+    const ipAddress = req.ip || req.connection?.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    console.log('📋 New lead registration request from:', ipAddress);
+    return this.authService.registerLead(registerLeadDto);
   }
 }

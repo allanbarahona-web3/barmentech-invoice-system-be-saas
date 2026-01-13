@@ -2,9 +2,11 @@ import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TokenService } from '../../common/services/token.service';
+import { RecaptchaService } from '../../common/services/recaptcha.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { CrmSignupDto } from './dto/crm-signup.dto';
+import { RegisterLeadDto } from './dto/register-lead.dto';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 
@@ -21,7 +23,74 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private tokenService: TokenService,
+    private recaptchaService: RecaptchaService,
   ) {}
+
+  /**
+   * Registrar un nuevo mayorista (tenant) con su usuario admin
+   */
+  async registerMayorista(registerMayoristaDto: any) {
+    const { email, password, companyName, name } = registerMayoristaDto;
+
+    // Verificar que el email no exista en ningún tenant
+    const existingUser = await this.prisma.tenantUser.findFirst({
+      where: { email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
+    }
+
+    // Hash del password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Generar slug único
+    const baseSlug = companyName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    let slug = baseSlug;
+    let counter = 1;
+    while (await this.prisma.tenant.findUnique({ where: { slug } })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    // Crear tenant y usuario en una transacción
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Crear tenant
+      const tenant = await tx.tenant.create({
+        data: {
+          name: companyName,
+          slug,
+          status: 'active',
+          billingStatus: 'ok',
+        },
+      });
+
+      // Crear usuario como owner
+      const user = await tx.tenantUser.create({
+        data: {
+          tenantId: tenant.id,
+          email,
+          passwordHash,
+          name,
+          role: 'owner',
+          status: 'active',
+        },
+      });
+
+      return { tenant, user };
+    });
+
+    // Retornar user data (sin password)
+    const { passwordHash: _, ...userData } = result.user;
+    return {
+      ok: true,
+      data: userData,
+    };
+  }
 
   async register(registerDto: RegisterDto) {
     const { tenantId, email, password, name, role } = registerDto;
@@ -237,6 +306,49 @@ export class AuthService {
   }
 
   /**
+   * Register Lead - Registra un nuevo lead sin crear tenant ni usuario
+   * Solo guarda la información del formulario del FE
+   */
+  async registerLead(registerLeadDto: any) {
+    const { email, fullname, telephone, message, recaptchaToken } = registerLeadDto;
+
+    console.log('📋 Registering new lead:', { email, fullname, telephone });
+
+    // ⚠️ reCAPTCHA v3 validation disabled for development
+    // Uncomment for production:
+    // console.log('🔐 Validating reCAPTCHA token...');
+    // await this.recaptchaService.validateToken(recaptchaToken, 'register_lead');
+    // console.log('✅ reCAPTCHA validation passed');
+
+    // Crear el lead
+    const lead = await this.prisma.lead.create({
+      data: {
+        email,
+        fullName: fullname,
+        whatsappNumber: telephone,
+        message,
+        tenantId: null, // Lead anónimo sin tenant
+      },
+    });
+
+    console.log('✅ Lead registered successfully:', {
+      id: lead.id,
+      email: lead.email,
+    });
+
+    return {
+      ok: true,
+      message: 'Lead registered successfully',
+      data: {
+        id: lead.id,
+        email: lead.email,
+        fullName: lead.fullName,
+        whatsappNumber: lead.whatsappNumber,
+      },
+    };
+  }
+
+  /**
    * CRM Signup - Crea un nuevo tenant con subscriptionType: 'crm_only'
    * y el primer usuario como owner
    */
@@ -271,12 +383,11 @@ export class AuthService {
 
     // Crear tenant y usuario en una transacción
     const result = await this.prisma.$transaction(async (tx) => {
-      // Crear tenant con subscriptionType: 'crm_only'
+      // Crear tenant
       const tenant = await tx.tenant.create({
         data: {
           name: companyName,
           slug,
-          subscriptionType: 'crm_only',
           status: 'active',
           billingStatus: 'ok',
         },
@@ -322,7 +433,6 @@ export class AuthService {
         id: result.tenant.id,
         name: result.tenant.name,
         slug: result.tenant.slug,
-        subscriptionType: result.tenant.subscriptionType,
       },
       accessToken,
       refreshToken,
