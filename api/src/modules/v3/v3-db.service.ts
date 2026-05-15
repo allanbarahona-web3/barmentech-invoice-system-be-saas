@@ -57,4 +57,16 @@ export class V3DbService implements OnModuleInit, OnModuleDestroy {
       return callback(tx as PrismaClient);
     });
   }
+
+  async withSuperAdmin<T>(callback: (tx: PrismaClient) => Promise<T>): Promise<T> {
+    const client = this.getClient();
+
+    return client.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(
+        `SELECT set_config('app.is_superadmin', 'true', false)`,
+      );
+
+      return callback(tx as PrismaClient);
+    });
+  }
 }

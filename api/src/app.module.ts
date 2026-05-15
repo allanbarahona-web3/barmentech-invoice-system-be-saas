@@ -19,6 +19,7 @@ import { CrmModule } from './modules/crm/crm.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { FiscalCoreModule } from './modules/fiscal-core/fiscal-core.module';
 import { V3CompatModule } from './modules/v3/v3-compat.module';
+import { SuperAdminModule } from './modules/v3/super-admin/super-admin.module';
 import { HostExtractionMiddleware } from './common/middleware/host-extraction.middleware';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
 
@@ -61,6 +62,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     LeadsModule,
     FiscalCoreModule,
     V3CompatModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

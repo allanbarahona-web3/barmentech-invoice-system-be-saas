@@ -145,7 +145,7 @@ const prisma = new PrismaClient({ datasources: { db: { url } }, log: ['warn', 'e
         ) VALUES
           ($1, $2, 'Cliente Demo 1', 'cliente1@demo.com', '8888-1111', NULL, '{}'::jsonb, 'Seed demo', 'active', '{"preferredChannel":"email","consentStatus":"granted","preferredTime":"morning","allowEmail":true,"allowWhatsApp":false}'::jsonb, now(), now()),
           ($3, $2, 'Cliente Demo 2', 'cliente2@demo.com', '8888-2222', NULL, '{}'::jsonb, 'Seed demo', 'active', '{"preferredChannel":"whatsapp","consentStatus":"granted","preferredTime":"afternoon","allowEmail":true,"allowWhatsApp":true}'::jsonb, now(), now())
-        ON CONFLICT (id) DO UPDATE SET
+        ON CONFLICT (tenant_id, email) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
           phone = EXCLUDED.phone,
@@ -161,7 +161,7 @@ const prisma = new PrismaClient({ datasources: { db: { url } }, log: ['warn', 'e
         ) VALUES
           ($1, $2, 'SRV-001', 'Servicio Demo', 'Servicio para pruebas', 'service', 15000, '{}'::jsonb, true, now(), now()),
           ($3, $2, 'PRD-001', 'Producto Demo', 'Producto para pruebas', 'product', 9500, '{}'::jsonb, true, now(), now())
-        ON CONFLICT (id) DO UPDATE SET
+        ON CONFLICT (tenant_id, code) DO UPDATE SET
           name = EXCLUDED.name,
           description = EXCLUDED.description,
           unit_price = EXCLUDED.unit_price,

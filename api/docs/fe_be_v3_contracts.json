@@ -75,6 +75,22 @@
         "email_xml",
         "manual"
       ]
+    },
+    "superAdmin": {
+      "endpoints": [
+        "POST /v1/platform/auth/login",
+        "POST /v1/platform/auth/refresh",
+        "POST /v1/platform/auth/logout",
+        "POST /v1/platform/auth/revoke-all",
+        "POST /v1/platform/auth/me",
+        "GET /v1/platform/tenants",
+        "PATCH /v1/platform/tenants/:id/suspend",
+        "PATCH /v1/platform/tenants/:id/activate"
+      ],
+      "authModel": {
+        "scope": "platform",
+        "table": "platform_users"
+      }
     }
   },
   "authAndIsolation": {
