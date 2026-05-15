@@ -22,7 +22,12 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "v3:migrate:bootstrap": "node scripts/v3/migrate-bootstrap.js",
+    "v3:verify": "node scripts/v3/verify-v3.js",
+    "v3:reset": "node scripts/v3/reset-v3.js",
+    "v3:seed:dev": "node scripts/v3/seed-dev.js",
+    "v3:setup:dev": "npm run v3:reset && npm run v3:seed:dev && npm run v3:verify"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

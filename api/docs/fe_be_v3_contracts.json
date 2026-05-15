@@ -1,0 +1,86 @@
+{
+  "version": "v3-draft-1",
+  "goal": "Keep FE compatibility while migrating BE/DB to commercial_documents and fiscal async architecture",
+  "apiPrefix": "/v1",
+  "resources": {
+    "documents": {
+      "endpoints": [
+        "GET /v1/documents",
+        "GET /v1/documents/:id",
+        "POST /v1/documents",
+        "PATCH /v1/documents/:id",
+        "DELETE /v1/documents/:id",
+        "PATCH /v1/documents/:id/status",
+        "POST /v1/documents/:id/export-pdf",
+        "POST /v1/documents/:id/sent",
+        "POST /v1/documents/:id/archive",
+        "POST /v1/documents/:id/convert-to-invoice"
+      ],
+      "compatibility": {
+        "responseShape": "invoiceSchema-compatible",
+        "internalModel": "commercial_documents"
+      }
+    },
+    "customers": {
+      "endpoints": [
+        "GET /v1/customers",
+        "GET /v1/customers/:id",
+        "POST /v1/customers",
+        "PATCH /v1/customers/:id",
+        "DELETE /v1/customers/:id"
+      ]
+    },
+    "catalogItems": {
+      "endpoints": [
+        "GET /v1/catalog-items",
+        "GET /v1/catalog-items/:id",
+        "POST /v1/catalog-items",
+        "PATCH /v1/catalog-items/:id",
+        "DELETE /v1/catalog-items/:id"
+      ],
+      "compatibility": {
+        "legacyName": "products",
+        "internalModel": "catalog_items"
+      }
+    },
+    "tenantSettings": {
+      "endpoints": [
+        "GET /v1/tenant-settings",
+        "PUT /v1/tenant-settings",
+        "POST /v1/tenant-settings/complete-onboarding"
+      ]
+    },
+    "companyProfile": {
+      "endpoints": [
+        "GET /v1/company-profile",
+        "PUT /v1/company-profile",
+        "PATCH /v1/company-profile"
+      ]
+    },
+    "receipts": {
+      "endpoints": [
+        "POST /v1/receipts",
+        "POST /v1/receipts/:id/allocations",
+        "GET /v1/documents/:id/receipts"
+      ],
+      "purpose": "partial payments and allocations"
+    },
+    "expenses": {
+      "endpoints": [
+        "GET /v1/expenses",
+        "POST /v1/expenses/manual",
+        "POST /v1/expenses/import-xml"
+      ],
+      "sources": [
+        "email_xml",
+        "manual"
+      ]
+    }
+  },
+  "authAndIsolation": {
+    "tenantResolution": "domain/subdomain + JWT tenant match",
+    "sessionValidation": "JWT + JTI",
+    "dbIsolation": "RLS with app.tenant_id",
+    "platformBypass": "app.is_superadmin=true on platform routes only"
+  }
+}
