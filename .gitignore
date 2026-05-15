@@ -29,6 +29,7 @@ Thumbs.db
 # Editor folders
 .vscode/
 .idea/
+*.code-workspace
 
 # Misc
 *.swp
@@ -42,3 +43,7 @@ build/
 # Others
 *.log
 .vercel
+
+# Docs policy: track only README.md
+*.md
+!README.md
