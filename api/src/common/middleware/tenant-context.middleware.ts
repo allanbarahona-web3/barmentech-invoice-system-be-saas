@@ -8,7 +8,7 @@ export class TenantContextMiddleware implements NestMiddleware {
 
   async use(req: Request, res: Response, next: NextFunction) {
     // Get tenant ID from JWT payload (set by JwtStrategy)
-    const tenantId = (req.user as any)?.tenantId;
+    const tenantId = (req.user as any)?.tenantId || req.tenantIdFromHost;
 
     if (tenantId) {
       // Set the tenant context for PostgreSQL RLS

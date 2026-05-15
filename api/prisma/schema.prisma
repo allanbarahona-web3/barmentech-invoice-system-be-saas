@@ -134,6 +134,18 @@ enum BillingCurrency {
   EUR
 }
 
+enum FiscalDocumentStatus {
+  DRAFT
+  GENERATED
+  READY_TO_SUBMIT
+  SUBMITTED
+  PROCESSING
+  ACCEPTED
+  REJECTED
+  ERROR
+  CANCELLED
+}
+
 // ========================================
 // TENANT (Base del multi-tenant)
 // ========================================
@@ -142,6 +154,8 @@ model Tenant {
   id               Int              @id @default(autoincrement())
   name             String
   slug             String           @unique
+  countryCode      String?          @map("country_code")
+  countryPack      String?          @map("country_pack")
   status           TenantStatus     @default(active)
   billingStatus    BillingStatus    @default(ok)
   industry         String?
@@ -166,6 +180,7 @@ model Tenant {
   credentials Credential[]
   services    Service[]
   billingEvents BillingEvent[]
+  fiscalDocuments FiscalDocument[]
 
   @@map("tenants")
 }
@@ -329,6 +344,7 @@ model Order {
   customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items    OrderItem[]
   payments Payment[]
+  fiscalDocuments FiscalDocument[]
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId])
@@ -626,4 +642,42 @@ model BillingEvent {
   @@index([status])
   @@index([createdAt])
   @@map("billing_events")
+}
+
+model FiscalDocument {
+  id                  String               @id @default(uuid())
+  tenantId            Int
+  orderId             String?              @map("order_id")
+  sourceDocumentId    String?              @map("source_document_id")
+  documentType        String               @map("document_type")
+  countryCode         String?              @map("country_code")
+  countryPack         String?              @map("country_pack")
+  fiscalNumber        String?              @map("fiscal_number")
+  commercialReference String?              @map("commercial_reference")
+  status              FiscalDocumentStatus @default(DRAFT)
+  currency            String               @default("USD")
+  subtotal            Int
+  taxTotal            Int                  @map("tax_total")
+  total               Int
+  payloadSnapshot     Json?                @map("payload_snapshot")
+  providerResponse    Json?                @map("provider_response")
+  xmlPath             String?              @map("xml_path")
+  pdfPath             String?              @map("pdf_path")
+  signedXmlPath       String?              @map("signed_xml_path")
+  errorMessage        String?              @map("error_message")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  submittedAt         DateTime?            @map("submitted_at")
+  acceptedAt          DateTime?            @map("accepted_at")
+  rejectedAt          DateTime?            @map("rejected_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order  Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([tenantId, fiscalNumber])
+  @@map("fiscal_documents")
 }

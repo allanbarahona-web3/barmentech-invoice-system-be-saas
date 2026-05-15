@@ -2,10 +2,14 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { FiscalApplicationService } from '../fiscal-core/services/fiscal-application.service';
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fiscalApplicationService: FiscalApplicationService,
+  ) {}
 
   async create(tenantId: number, createOrderDto: CreateOrderDto) {
     const { customerId, items, currency } = createOrderDto;
@@ -46,21 +50,35 @@ export class OrdersService {
         };
       });
 
+      const preparedFiscalData = await this.fiscalApplicationService.prepareOrderFiscalData(
+        {
+          tenantId,
+          currency: currency || 'USD',
+          subtotal: subtotalAmount,
+          total: subtotalAmount,
+          items: orderItems,
+          commercialType: 'order',
+        },
+        tx,
+      );
+
+      const taxAmount = preparedFiscalData.taxTotal || 0;
+
       // Generar orderNumber único dentro de la transacción
       const orderNumber = await this.generateOrderNumberInTx(tx, tenantId);
 
       // Crear orden con items
-      return tx.order.create({
+      const order = await tx.order.create({
         data: {
           tenantId,
           orderNumber,
           customerId,
           status: 'pending',
           subtotalAmount,
-          taxAmount: 0, // TODO: Calcular impuestos
+          taxAmount,
           shippingAmount: 0, // TODO: Calcular envío
           discountAmount: 0,
-          totalAmount: subtotalAmount,
+          totalAmount: subtotalAmount + taxAmount,
           currency: currency || 'USD',
           items: {
             create: orderItems.map(item => ({
@@ -77,6 +95,22 @@ export class OrdersService {
           },
         },
       });
+
+      await this.fiscalApplicationService.createFiscalDocumentForOrder(
+        {
+          tenantId,
+          orderId: order.id,
+          commercialReference: order.orderNumber,
+          currency: order.currency,
+          subtotal: order.subtotalAmount,
+          taxTotal: order.taxAmount,
+          total: order.totalAmount,
+          preparedData: preparedFiscalData,
+        },
+        tx,
+      );
+
+      return order;
     });
   }
 
@@ -138,7 +172,7 @@ export class OrdersService {
     // Generar número de orden único (formato: ORD-YYYYMMDD-XXXX)
     const date = new Date();
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-    
+
     // Contar órdenes del día para este tenant
     const count = await this.prisma.order.count({
       where: {

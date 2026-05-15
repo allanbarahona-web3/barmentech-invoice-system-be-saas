@@ -18,6 +18,14 @@ export class UpdateTenantDto {
   @IsOptional()
   industry?: string;
 
+  @IsString()
+  @IsOptional()
+  countryCode?: string;
+
+  @IsString()
+  @IsOptional()
+  countryPack?: string;
+
   @IsOptional()
   config?: any;
 }

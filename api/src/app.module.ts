@@ -17,6 +17,7 @@ import { MediaModule } from './modules/media/media.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { FiscalCoreModule } from './modules/fiscal-core/fiscal-core.module';
 import { HostExtractionMiddleware } from './common/middleware/host-extraction.middleware';
 import { TenantContextMiddleware } from './common/middleware/tenant-context.middleware';
 
@@ -33,17 +34,17 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     // Can be overridden per endpoint with @Throttle() decorator
     ThrottlerModule.forRoot([
       {
-        ttl: 60000,    // Time window in milliseconds (60 seconds)
-        limit: 100,    // Max requests per window
+        ttl: 60000, // Time window in milliseconds (60 seconds)
+        limit: 100, // Max requests per window
       },
     ]),
-    
+
     // Prisma para acceso a base de datos
     PrismaModule,
-    
+
     // Common (guards, decorators, services globales)
     CommonModule,
-    
+
     // Módulos de negocio
     AuthModule,
     TenantsModule,
@@ -57,6 +58,7 @@ import { TenantContextMiddleware } from './common/middleware/tenant-context.midd
     CategoriesModule,
     CrmModule,
     LeadsModule,
+    FiscalCoreModule,
   ],
   controllers: [AppController],
   providers: [AppService],
@@ -67,7 +69,7 @@ export class AppModule implements NestModule {
       // 1️⃣ First: Extract tenantId from domain
       .apply(HostExtractionMiddleware)
       .forRoutes('*')
-      
+
       // 2️⃣ Second: Set tenant context for RLS
       .apply(TenantContextMiddleware)
       .forRoutes('*');
